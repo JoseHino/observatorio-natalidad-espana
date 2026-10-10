@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Natalidad en España</title>
+<meta name="description" content="Nacimientos de cada mes en España desde 1941 y de cada año desde 1858, con datos del INE en directo y aviso de mínimos históricos.">
+
+<!-- Tipografía del kit. Si no carga, la pila de respaldo mantiene el diseño. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%232a78d6'/%3E%3Cpath d='M5 6v12h13' stroke='white' stroke-width='1.9' fill='none' stroke-linecap='round'/%3E%3Cpath d='m8 14 3-3 3 3 4-6' stroke='white' stroke-width='1.9' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;650&display=swap" rel="stylesheet">
+
+<!-- Kit: no se toca por observatorio -->
+<link rel="stylesheet" href="assets/obs.css">
+
+<!-- Ajustes de marca de ESTE observatorio. Es el único sitio donde tocar color. -->
+<style>
+  :root { --brand: #2a78d6; --brand-ink: #1c5cab; --brand-soft: #eaf2fd; }
+
+  /* Piezas propias del observatorio de natalidad (el mapa de calor no es un tipo del kit). */
+  .nat-heat { width: 100%; height: 440px; }
+  @media (max-width: 640px) { .nat-heat { height: 360px; } }
+  .nat-ico { width: 20px; height: 20px; flex: 0 0 20px; margin-top: 1px; }
+  .nat-alarma { display: flex; gap: 10px; align-items: flex-start; padding: 4px 0; }
+  .nat-alarma + .nat-alarma { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 4px; }
+  .nat-alarma.crit .nat-ico { color: var(--crit); }
+  .nat-alarma.warn .nat-ico { color: #b07800; }
+  .nat-alarma.ok .nat-ico { color: var(--ok); }
+  .nat-leyenda { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center; font-size: 12.5px; color: var(--ink-2); padding: 4px 18px 10px; }
+  .nat-leyenda > span { display: inline-flex; align-items: center; gap: 7px; }
+  .nat-key { display: inline-block; width: 14px; height: 14px; border-radius: 2px; border: 2.5px solid var(--ink); flex: 0 0 14px; }
+  .nat-key.dashed { border-style: dashed; }
+  .nat-check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .nat-sub { margin-top: 26px; }
+  .nat-rec .v { font-size: 24px; }
+  .nat-rec-val, .nat-rec-ant { display: flex; align-items: center; gap: 7px; font-size: 13px; margin-top: 6px; color: var(--ink-2); }
+  .nat-rec-ant { color: var(--ink-mut); font-size: 12.5px; }
+  .nat-rec .nat-key { width: 11px; height: 11px; flex-basis: 11px; border-width: 2px; }
+  .nat-card .obs-card-ctrl select { max-width: 240px; }
+</style>
+</head>
+<body>
+
+<div id="obs-app"></div>
+
+<!-- Librería de gráficas -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+<!-- Kit -->
+<script src="assets/obs-charts.js"></script>
+<script src="assets/obs-ui.js"></script>
+<!-- Datos (los escribe pipeline/build_data.py) -->
+<script src="data/data.js"></script>
+<!-- Declaración de ESTE observatorio -->
+<script src="app.js"></script>
+
+</body>
+</html>

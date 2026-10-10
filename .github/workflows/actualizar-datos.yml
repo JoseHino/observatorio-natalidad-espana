@@ -1,0 +1,55 @@
+name: Actualizar datos
+
+# La Estimación Mensual de Nacimientos del INE sale a mediados de mes, sin día
+# fijo: se revisa los lunes y jueves. La página consulta además al INE en vivo
+# al abrirse, así que el fichero solo tiene que estar razonablemente al día.
+on:
+  schedule:
+    - cron: "30 6 * * 1,4"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: actualizar-datos
+  cancel-in-progress: false
+
+jobs:
+  recolectar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Recolectar
+        # Si el colector aborta (datos peores que los publicados) el paso falla
+        # y data.js se queda como estaba. Es el comportamiento que se quiere.
+        run: python pipeline/build_data.py
+
+      - name: Avisar de un nuevo mínimo histórico
+        # Una incidencia nueva llega por correo al propietario del repositorio.
+        if: hashFiles('ALERTA_NUEVA.md') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --title "Natalidad: nuevo mínimo histórico ($(date -u +%Y-%m-%d))" \
+            --body-file ALERTA_NUEVA.md
+
+      - name: Publicar si hay cambios
+        run: |
+          rm -f ALERTA_NUEVA.md
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- data/data.js; then
+            echo "Sin cambios en los datos."
+            exit 0
+          fi
+          git add data/data.js
+          git commit -m "Datos actualizados $(date -u +%Y-%m-%d)"
+          git push

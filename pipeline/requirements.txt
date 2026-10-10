@@ -1,0 +1,2 @@
+# El colector usa solo la biblioteca estandar de Python 3.9+.
+# Se deja el fichero para que la Action pueda anadir dependencias sin tocar el workflow.
