@@ -12,7 +12,7 @@
   var MES3 = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
   var INE_API = 'https://servicios.ine.es/wstempus/js/ES/DATOS_SERIE/';
 
-  var FUENTE_EMN = { txt: 'INE · Estimación Mensual de Nacimientos', url: 'https://www.ine.es/dyngs/INEbase/es/operacion.htm?c=Estadistica_C&cid=1254736177116&menu=ultiDatos&idp=1254735573002' };
+  var FUENTE_EMN = { txt: 'INE · Estimación Mensual de Nacimientos', url: 'https://www.ine.es/dyngs/INEbase/es/operacion.htm?c=Estadistica_C&cid=1254736177079&menu=ultiDatos&idp=1254735573002' };
   var FUENTE_MNP = { txt: 'INE · MNP, nacimientos', url: 'https://www.ine.es/dynt3/inebase/es/index.htm?padre=1123&dh=1' };
   var FUENTE_HIST = { txt: 'INE (anuarios históricos) y Carreras y Tafunell, Estadísticas Históricas de España', url: 'https://www.ine.es/inebaseweb/libros.do?tntp=25687' };
   var FUENTE_ECP = { txt: 'INE · Estadística Continua de Población', url: 'https://www.ine.es/jaxiT3/Tabla.htm?t=56934' };
@@ -24,7 +24,7 @@
     dia:  { txt: 'Nacimientos por día', corto: 'nacimientos por día', fmt: function (v) { return F.num(v, 0) + ' al día'; } },
     nac:  { txt: 'Nacimientos del mes', corto: 'nacimientos', fmt: function (v) { return F.num(v, 0); } }
   };
-  var estado = { metrica: 'tasa', minCal: false };
+  var estado = { metrica: 'tasa' };
 
   /* ----------------------------------------------------------- Utilidades */
 
@@ -218,22 +218,23 @@
     var vs = v.filter(function (x) { return x != null; });
     var lo = Math.min.apply(null, vs), hi = Math.max.apply(null, vs);
 
-    /* Marcas: récord vigente (marco continuo) y récord anterior (discontinuo). */
-    var marcas = [];
+    /* Marcas: los tres meses más bajos de la serie (marco grueso) y el mínimo
+       de cada mes del calendario (marco fino). Un mes puede ser ambas cosas. */
+    var marcas = {};
     function marca(k, tipo, txt) {
       if (!k) return;
-      marcas.push({ value: [+k.slice(0, 4) - y0, +k.slice(5) - 1], tipo: tipo, txt: txt });
+      var mk = marcas[k] || (marcas[k] = { value: [+k.slice(0, 4) - y0, +k.slice(5) - 1], tipo: tipo, txt: [] });
+      if (tipo === 'top') mk.tipo = 'top';
+      mk.txt.push(txt);
     }
-    var r = record(pares(met));
-    if (r.rec) marca(r.rec.k, 'rec', 'Mínimo histórico');
-    if (r.ant) marca(r.ant.k, 'ant', 'Récord anterior');
-    if (estado.minCal) {
-      for (var mm = 1; mm <= 12; mm++) {
-        var rc = record(pares(met, ('0' + mm).slice(-2)));
-        if (rc.rec && (!r.rec || rc.rec.k !== r.rec.k)) marca(rc.rec.k, 'cal', 'Mínimo de ' + MES[mm - 1]);
-        if (rc.ant && (!r.ant || rc.ant.k !== r.ant.k)) marca(rc.ant.k, 'calant', 'Anterior mínimo de ' + MES[mm - 1]);
-      }
+    var bajos = pares(met).filter(function (p) { return p.v != null && isFinite(p.v); })
+      .sort(function (a, b) { return a.v - b.v; }).slice(0, 3);
+    bajos.forEach(function (p, n) { marca(p.k, 'top', (n === 0 ? 'Mes más bajo' : n + 1 + 'º mes más bajo') + ' de toda la serie'); });
+    for (var mm = 1; mm <= 12; mm++) {
+      var rc = record(pares(met, ('0' + mm).slice(-2)));
+      if (rc.rec) marca(rc.rec.k, 'cal', 'Mínimo de ' + MES[mm - 1]);
     }
+    marcas = Object.keys(marcas).map(function (k) { var mk = marcas[k]; mk.txt = mk.txt.join('<br>'); return mk; });
     var ultimo = M.x[M.x.length - 1];
 
     return {
@@ -278,14 +279,13 @@
           type: 'scatter', symbol: 'rect', z: 5, silent: false,
           symbolSize: function () { return heat ? celda() : [8, 22]; },
           data: marcas.map(function (mk) {
-            var fuerte = mk.tipo === 'rec' || mk.tipo === 'ant';
             return {
               value: mk.value, txt: mk.txt,
               itemStyle: {
                 /* Blanco: los mínimos caen siempre en las celdas más oscuras de la escala. */
                 color: 'rgba(0,0,0,0)', borderColor: '#ffffff',
-                borderWidth: fuerte ? 2 : 1.2,
-                borderType: (mk.tipo === 'ant' || mk.tipo === 'calant') ? [4, 3] : 'solid'
+                borderWidth: mk.tipo === 'top' ? 2.2 : 1,
+                borderType: mk.tipo === 'top' ? 'solid' : [3, 2]
               }
             };
           })
@@ -325,9 +325,8 @@
       '</div>' +
       '<div id="nat-heat" class="nat-heat" role="img" aria-label="Mapa de calor de la natalidad mensual en España desde 1941"></div>' +
       '<div class="nat-leyenda">' +
-        '<span><span class="nat-key solid"></span>Mínimo histórico</span>' +
-        '<span><span class="nat-key dashed"></span>Récord anterior (el que batió)</span>' +
-        '<label class="nat-check"><input type="checkbox" id="nat-mincal"' + (estado.minCal ? ' checked' : '') + '> Marcar también el mínimo de cada mes del calendario</label>' +
+        '<span><span class="nat-key solid"></span>Los tres meses más bajos de la serie</span>' +
+        '<span><span class="nat-key dashed"></span>Mínimo histórico de cada mes (enero, febrero…)</span>' +
       '</div>' +
       '<div class="obs-card-foot"><span class="obs-chip live"><span class="dot"></span>Mensual</span>' +
         '<span>Fuente: <a href="' + FUENTE_MNP.url + '" target="_blank" rel="noopener">' + FUENTE_MNP.txt + '</a> (1941-2024) y ' +
@@ -339,8 +338,6 @@
   function engancharMapa() {
     var sel = document.getElementById('nat-metrica');
     if (sel) sel.addEventListener('change', function () { estado.metrica = sel.value; pintarMapa(); });
-    var chk = document.getElementById('nat-mincal');
-    if (chk) chk.addEventListener('change', function () { estado.minCal = chk.checked; pintarMapa(); });
     var png = document.getElementById('nat-png');
     if (png) png.addEventListener('click', function () {
       if (!heat) return;
@@ -377,7 +374,7 @@
         { label: 'Nacimientos en ' + A.x[A.x.length - 1] + ' (último año completo)', valor: A.nac[A.nac.length - 1], delta: dPct(A.nac[A.nac.length - 1], A.nac[A.nac.length - 2]), deltaRef: 'frente a ' + A.x[A.x.length - 2], serie: A.nac.slice(-20) }
       ],
       extra: '<div class="obs-grid">' + htmlMapa() + '</div>' +
-        '<div class="obs-section-head nat-sub"><h2>Récords vigentes</h2><p>Cada récord con el que batió. En el mapa, el récord vigente lleva marco continuo y el anterior, discontinuo.</p></div>' +
+        '<div class="obs-section-head nat-sub"><h2>Récords vigentes</h2><p>Cada récord con el que batió. En el mapa, los tres meses más bajos llevan marco grueso y el mínimo de cada mes del calendario, discontinuo.</p></div>' +
         htmlRecords()
     };
   }
